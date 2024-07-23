@@ -165,7 +165,6 @@ public class MainController {
                         return i1.getStatus().getCode().compareTo(i2.getStatus().getCode());
                 }
             });
-
         }
 
         int totalPages = (list.size() + pageSize - 1) / pageSize;

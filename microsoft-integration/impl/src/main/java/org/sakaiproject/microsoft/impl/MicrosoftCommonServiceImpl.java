@@ -15,39 +15,36 @@
  */
 package org.sakaiproject.microsoft.impl;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 import com.microsoft.graph.content.BatchRequestContent;
 import com.microsoft.graph.content.BatchResponseContent;
 import com.microsoft.graph.http.HttpMethod;
-import com.microsoft.graph.models.*;
-import com.microsoft.graph.options.HeaderOption;
-import com.microsoft.graph.options.Option;
-import com.microsoft.graph.requests.ChannelCollectionPage;
-import com.microsoft.graph.requests.ChannelCollectionRequest;
-import com.microsoft.graph.requests.ChannelCollectionRequestBuilder;
-import com.microsoft.graph.requests.ChatMessageCollectionPage;
-import com.microsoft.graph.requests.ChatMessageCollectionRequestBuilder;
-import com.microsoft.graph.requests.ConversationMemberCollectionPage;
-import com.microsoft.graph.requests.ConversationMemberCollectionRequestBuilder;
-import com.microsoft.graph.requests.ConversationMemberCollectionResponse;
-import com.microsoft.graph.requests.DirectoryObjectCollectionWithReferencesPage;
-import com.microsoft.graph.requests.DirectoryObjectCollectionWithReferencesRequestBuilder;
-import com.microsoft.graph.requests.DriveItemCollectionPage;
-import com.microsoft.graph.requests.DriveItemCollectionRequestBuilder;
-import com.microsoft.graph.requests.DriveSharedWithMeCollectionPage;
-import com.microsoft.graph.requests.DriveSharedWithMeCollectionRequestBuilder;
-import com.microsoft.graph.requests.GraphServiceClient;
-import com.microsoft.graph.requests.GroupCollectionPage;
-import com.microsoft.graph.requests.GroupCollectionRequestBuilder;
-import com.microsoft.graph.requests.UserCollectionPage;
-import com.microsoft.graph.requests.UserCollectionRequestBuilder;
-import com.microsoft.graph.tasks.LargeFileUploadResult;
-import com.microsoft.graph.tasks.LargeFileUploadTask;
-import com.nimbusds.oauth2.sdk.util.StringUtils;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.sakaiproject.authz.api.FunctionManager;
 import org.sakaiproject.messaging.api.MicrosoftMessage;
@@ -78,31 +75,68 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
+import com.microsoft.graph.tasks.LargeFileUploadTask;
+import com.microsoft.graph.tasks.LargeFileUploadResult;
+import com.microsoft.graph.models.AadUserConversationMember;
+import com.microsoft.graph.models.CallRecordingEventMessageDetail;
+import com.microsoft.graph.models.CallRecordingStatus;
+import com.microsoft.graph.models.Channel;
+import com.microsoft.graph.models.ChannelMembershipType;
+import com.microsoft.graph.models.ChatMessage;
+import com.microsoft.graph.models.ConversationMember;
+import com.microsoft.graph.models.DirectoryObject;
+import com.microsoft.graph.models.DriveItem;
+import com.microsoft.graph.models.DriveItemCreateLinkParameterSet;
+import com.microsoft.graph.models.DriveItemCreateUploadSessionParameterSet;
+import com.microsoft.graph.models.DriveItemInviteParameterSet;
+import com.microsoft.graph.models.DriveItemUploadableProperties;
+import com.microsoft.graph.models.DriveRecipient;
+import com.microsoft.graph.models.Folder;
+import com.microsoft.graph.models.Group;
+import com.microsoft.graph.models.Identity;
+import com.microsoft.graph.models.IdentitySet;
+import com.microsoft.graph.models.Invitation;
+import com.microsoft.graph.models.LobbyBypassScope;
+import com.microsoft.graph.models.LobbyBypassSettings;
+import com.microsoft.graph.models.MeetingParticipantInfo;
+import com.microsoft.graph.models.MeetingParticipants;
+import com.microsoft.graph.models.OnlineMeeting;
+import com.microsoft.graph.models.OnlineMeetingPresenters;
+import com.microsoft.graph.models.OnlineMeetingRole;
+import com.microsoft.graph.models.Permission;
+import com.microsoft.graph.models.PermissionGrantParameterSet;
+import com.microsoft.graph.models.Team;
+import com.microsoft.graph.models.TeamVisibilityType;
+import com.microsoft.graph.models.ThumbnailSet;
+import com.microsoft.graph.models.UploadSession;
+import com.microsoft.graph.models.User;
+import com.microsoft.graph.options.HeaderOption;
+import com.microsoft.graph.options.Option;
+import com.microsoft.graph.requests.ChannelCollectionPage;
+import com.microsoft.graph.requests.ChannelCollectionRequest;
+import com.microsoft.graph.requests.ChannelCollectionRequestBuilder;
+import com.microsoft.graph.requests.ChatMessageCollectionPage;
+import com.microsoft.graph.requests.ChatMessageCollectionRequestBuilder;
+import com.microsoft.graph.requests.ConversationMemberCollectionPage;
+import com.microsoft.graph.requests.ConversationMemberCollectionRequestBuilder;
+import com.microsoft.graph.requests.ConversationMemberCollectionResponse;
+import com.microsoft.graph.requests.DirectoryObjectCollectionWithReferencesPage;
+import com.microsoft.graph.requests.DirectoryObjectCollectionWithReferencesRequestBuilder;
+import com.microsoft.graph.requests.DriveItemCollectionPage;
+import com.microsoft.graph.requests.DriveItemCollectionRequestBuilder;
+import com.microsoft.graph.requests.DriveSharedWithMeCollectionPage;
+import com.microsoft.graph.requests.DriveSharedWithMeCollectionRequestBuilder;
+import com.microsoft.graph.requests.GraphServiceClient;
+import com.microsoft.graph.requests.GroupCollectionPage;
+import com.microsoft.graph.requests.GroupCollectionRequestBuilder;
+import com.microsoft.graph.requests.UserCollectionPage;
+import com.microsoft.graph.requests.UserCollectionRequestBuilder;
+import com.nimbusds.oauth2.sdk.util.StringUtils;
+import lombok.Setter;
+import lombok.extern.log4j.Log4j2;
 
-@Slf4j
+
+@Log4j2
 @Transactional
 public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 
@@ -565,65 +599,58 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
                     :
                     name;
 
-            User userOwner = getGraphClient().users(ownerEmail).buildRequest().get();
-            AadUserConversationMember conversationMember = new AadUserConversationMember();
-            conversationMember.oDataType = "#microsoft.graph.aadUserConversationMember";
-            conversationMember.roles = rolesList;
-            conversationMember.additionalDataManager().put("user@odata.bind", new JsonPrimitive("https://graph.microsoft.com/v1.0/users('" + userOwner.id + "')"));
+			User userOwner = getGraphClient().users(ownerEmail).buildRequest().get();
+			AadUserConversationMember conversationMember = new AadUserConversationMember();
+			conversationMember.oDataType = "#microsoft.graph.aadUserConversationMember";
+			conversationMember.roles = rolesList;
+			conversationMember.additionalDataManager().put("user@odata.bind", new JsonPrimitive("https://graph.microsoft.com/v1.0/users('" + userOwner.id + "')"));
+			
+			LinkedList<ConversationMember> membersList = new LinkedList<ConversationMember>();
+			membersList.add(conversationMember);
+			
+			ConversationMemberCollectionResponse conversationMemberCollectionResponse = new ConversationMemberCollectionResponse();
+			conversationMemberCollectionResponse.value = membersList;
+			ConversationMemberCollectionPage conversationMemberCollectionPage = new ConversationMemberCollectionPage(conversationMemberCollectionResponse, null);
+			
+			Team team = new Team();
+			team.displayName = truncatedName;
+			team.description = truncatedName;
+			team.visibility = TeamVisibilityType.PRIVATE;
+			team.members = conversationMemberCollectionPage;
+			team.additionalDataManager().put("template@odata.bind", new JsonPrimitive("https://graph.microsoft.com/v1.0/teamsTemplates('standard')"));
 
-            LinkedList<ConversationMember> membersList = new LinkedList<ConversationMember>();
-            membersList.add(conversationMember);
-
-            ConversationMemberCollectionResponse conversationMemberCollectionResponse = new ConversationMemberCollectionResponse();
-            conversationMemberCollectionResponse.value = membersList;
-            ConversationMemberCollectionPage conversationMemberCollectionPage = new ConversationMemberCollectionPage(conversationMemberCollectionResponse, null);
-
-            Team team = new Team();
-            team.displayName = truncatedName;
-            team.description = truncatedName;
-            team.visibility = TeamVisibilityType.PRIVATE;
-            team.members = conversationMemberCollectionPage;
-            System.out.println("EL TEAM ES ESTE:" + team.displayName);
-            System.out.println("EL TEAM ES ESTE:" + team.additionalDataManager().put("template@odata.bind", new JsonPrimitive("https://graph.microsoft.com/v1.0/teamsTemplates('standard')")));
-            team.additionalDataManager().put("template@odata.bind", new JsonPrimitive("https://graph.microsoft.com/v1.0/teamsTemplates('standard')"));
-
-            System.out.println("EL TEAM ES ESTE:" + team);
-
-            Team ret = getGraphClient().teams()
-                    .buildRequest()
-                    .post(team);
-
-            JsonElement adm = ret.additionalDataManager().get("graphResponseHeaders");
-            if (adm != null) {
-                String contentLocation = adm.getAsJsonObject().get("content-location").getAsString();
-                Pattern teamPattern = Pattern.compile("^/teams\\('([^']+)'\\)$");
-                Matcher matcher = teamPattern.matcher(contentLocation);
-                if (matcher.find()) {
-                    String teamId = matcher.group(1);
-                    //get Teams cache
-                    Cache.ValueWrapper cachedValue = getCache().get(CACHE_TEAMS);
-                    if (cachedValue != null) {
-                        //add newly created team to the cached map
-                        Map<String, MicrosoftTeam> teamsMap = (Map<String, MicrosoftTeam>) cachedValue.get();
-                        teamsMap.put(teamId, MicrosoftTeam.builder()
-                                .id(teamId)
-                                .name(truncatedName)
-                                .description(truncatedName)
-                                .build());
-
-                        getCache().put(CACHE_TEAMS, teamsMap);
-                    }
-
-                    return teamId;
-                }
-            }
-        } catch (MicrosoftCredentialsException e) {
-            throw e;
-        } catch (Exception ex) {
-            log.debug("Error creating Microsoft Team: name={}", name);
-            System.out.println("ERROR CREATING TEAM" + ex);
-            System.out.println("Error message: " + ex.getMessage());
-
+			Team ret = getGraphClient().teams()
+				.buildRequest()
+				.post(team);
+			
+			JsonElement adm = ret.additionalDataManager().get("graphResponseHeaders");
+			if(adm != null) {
+				String contentLocation = adm.getAsJsonObject().get("content-location").getAsString();
+				Pattern teamPattern = Pattern.compile("^/teams\\('([^']+)'\\)$");
+				Matcher matcher = teamPattern.matcher(contentLocation);
+				if(matcher.find()) {
+					String teamId = matcher.group(1);
+					//get Teams cache
+					Cache.ValueWrapper cachedValue = getCache().get(CACHE_TEAMS);
+					if(cachedValue != null) {
+						//add newly created team to the cached map
+						Map<String, MicrosoftTeam> teamsMap = (Map<String, MicrosoftTeam>)cachedValue.get();
+						teamsMap.put(teamId, MicrosoftTeam.builder()
+								.id(teamId)
+								.name(truncatedName)
+								.description(truncatedName)
+								.build());
+						
+						getCache().put(CACHE_TEAMS, teamsMap);
+					}
+					
+					return teamId;
+				}
+			}
+		}catch(MicrosoftCredentialsException e) {
+			throw e;
+		} catch(Exception ex){
+			log.debug("Error creating Microsoft Team: name={}", name);
         }
         return null;
     }
