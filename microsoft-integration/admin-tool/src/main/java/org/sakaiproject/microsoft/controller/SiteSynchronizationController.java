@@ -46,7 +46,7 @@ import lombok.extern.slf4j.Slf4j;
  * GroupSynchronizationController
  * 
  * This is the controller used by Spring MVC to handle Group Synchronizations related requests
- * 
+ *
  */
 @Slf4j
 @Controller
@@ -139,6 +139,7 @@ public class SiteSynchronizationController {
 			for(String teamId: payload.getSelectedTeamIds()) {
 				if(teamId.equals(NEW) && teamCreatedId == null) {
 					teamCreatedId = microsoftCommonService.createTeam(payload.getNewTeamName(), microsoftConfigurationService.getCredentials().getEmail());
+					System.out.println("TEAMID"+teamCreatedId);
 					if(teamCreatedId == null) {
 						redirectAttributes.addFlashAttribute("exception_error", MessageFormat.format(rb.getString("error.creating_team_param"), payload.getNewTeamName()));
 						continue;
