@@ -1229,11 +1229,10 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 			BatchRequestContent batchRequestContent = new BatchRequestContent();
 
 			groupsToProcess.forEach(group -> {
-				String truncatedName = group.getTitle().length() > CHANNEL_CHARACTER_LIMIT ? group.getTitle().substring(0, CHANNEL_CHARACTER_LIMIT - 1) : group.getTitle();
 				Channel channel = new Channel();
 				channel.membershipType = ChannelMembershipType.PRIVATE;
-				channel.displayName = formatMicrosoftString(truncatedName);
-				channel.description = truncatedName;
+				channel.displayName = processMicrosoftChannelName(group.getTitle());
+				channel.description = group.getTitle();
 				channel.members = members;
 
 				batchRequestContent.addBatchRequestStep(postChannel, HttpMethod.POST, channel);
@@ -1269,10 +1268,11 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 							.stream().map(r -> MicrosoftChannel.builder()
 									.id(r.body.getAsJsonObject().get("id").getAsString())
 									.name(r.body.getAsJsonObject().get("displayName").getAsString())
+									.description(r.body.getAsJsonObject().get("description").getAsString())
 									.build()).collect(Collectors.toList());
 
 			List<org.sakaiproject.site.api.Group> pendingGroups = groupsToProcess.stream()
-					.filter(g -> successRequests.stream().noneMatch(c -> c.getName().equalsIgnoreCase(g.getTitle())))
+					.filter(g -> successRequests.stream().noneMatch(c -> c.getName().equalsIgnoreCase(formatMicrosoftString(truncateTitle(g.getTitle())))))
 					.collect(Collectors.toList());
 
 			responseMap.put("failed", pendingGroups);
@@ -1295,6 +1295,15 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 		ConversationMemberCollectionResponse conversationMemberCollectionResponse = new ConversationMemberCollectionResponse();
 		conversationMemberCollectionResponse.value = membersList;
 		return new ConversationMemberCollectionPage(conversationMemberCollectionResponse, null);
+	}
+
+	@Override
+	public String processMicrosoftChannelName(String name) {
+		return formatMicrosoftString(truncateTitle(name));
+	}
+
+	private String truncateTitle(String title) {
+		return title.length() > CHANNEL_CHARACTER_LIMIT ? title.substring(0, CHANNEL_CHARACTER_LIMIT - 1) : title;
 	}
 
 	@Override
@@ -2391,7 +2400,7 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 
 	//https://learn.microsoft.com/en-us/graph/known-issues#create-channel-can-return-an-error-response
 	private String formatMicrosoftString(String str) {
-		String[] charsToReplace = {"\\~", "#", "%", "&", "\\*", "\\{", "\\}", "\\+", "/", "\\\\", ":", "<", ">", "\\?", "\\|", "‘", "`", "´", "”", "\""};
+		String[] charsToReplace = {"\\~", "#", "%", "&", "\\*", "\\{", "\\}", "\\+", "/", "\\\\", ":", "<", ">", "\\?", "\\|", "‘", "'", "`", "´", "”", "\""};
 		for (String c : charsToReplace) {
 			str = str.replaceAll(c, "");
 		}

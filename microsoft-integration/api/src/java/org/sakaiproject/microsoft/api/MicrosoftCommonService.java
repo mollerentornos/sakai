@@ -111,6 +111,8 @@ public interface MicrosoftCommonService {
 	String createChannel(String teamId, String name, String ownerEmail) throws MicrosoftCredentialsException;
 	List<MicrosoftChannel> createChannels(List<Group> groupsToProcess, String teamId, String ownerEmail) throws MicrosoftCredentialsException, JsonProcessingException;
 
+	String processMicrosoftChannelName(String name);
+
 	boolean deleteChannel(String teamId, String channelId) throws MicrosoftCredentialsException;
 	
 	MicrosoftMembersCollection getChannelMembers(String teamId, String channelId, MicrosoftUserIdentifier key) throws MicrosoftCredentialsException;

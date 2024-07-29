@@ -314,9 +314,8 @@ public class AutoConfigController {
 		List<MicrosoftChannel> channels = microsoftCommonService.createChannels(groupsToProcess, teamId, credentials.getEmail());
 
 		for (Group g : groupsToProcess) {
-
 			Optional<MicrosoftChannel> channelOpt = channels.stream()
-					.filter(c -> c.getName().equalsIgnoreCase(g.getTitle())).findFirst();
+					.filter(c -> c.getName().equalsIgnoreCase(microsoftCommonService.processMicrosoftChannelName(g.getTitle()))).findFirst();
 
 			channelOpt.ifPresent(channel -> {
 				GroupSynchronization gs = GroupSynchronization.builder()
@@ -341,7 +340,7 @@ public class AutoConfigController {
 		List<Group> groupsToProcess = limitGroups(site.getGroups().stream().filter(g -> !g.getTitle().startsWith("Access:")).collect(Collectors.toList()));
 
 		List<Group> nonExistingGroups = groupsToProcess.stream()
-				.filter(g -> channelsMap.values().stream().noneMatch(c -> c.getName().equalsIgnoreCase(g.getTitle())))
+				.filter(g -> channelsMap.values().stream().noneMatch(c -> c.getName().equalsIgnoreCase(microsoftCommonService.processMicrosoftChannelName(g.getTitle()))))
 				.collect(Collectors.toList());
 
 		if (nonExistingGroups.size() > 0 && autoConfigSessionBean.isNewChannel()) {
@@ -351,7 +350,7 @@ public class AutoConfigController {
 
 		for (Group g : groupsToProcess) {
 			MicrosoftChannel channel = channelsMap.values().stream()
-					.filter(c -> c.getName().equalsIgnoreCase(g.getTitle()))
+					.filter(c -> c.getName().equalsIgnoreCase(microsoftCommonService.processMicrosoftChannelName(g.getTitle())))
 					.findAny()
 					.orElse(null);
 
