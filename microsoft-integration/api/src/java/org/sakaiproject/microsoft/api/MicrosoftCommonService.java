@@ -27,6 +27,7 @@ import org.sakaiproject.microsoft.api.data.MicrosoftUserIdentifier;
 import org.sakaiproject.microsoft.api.data.TeamsMeetingData;
 import org.sakaiproject.microsoft.api.exceptions.MicrosoftCredentialsException;
 import org.sakaiproject.microsoft.api.exceptions.MicrosoftGenericException;
+import org.sakaiproject.microsoft.api.model.SiteSynchronization;
 import org.sakaiproject.site.api.Group;
 
 import java.io.File;
@@ -76,6 +77,8 @@ public interface MicrosoftCommonService {
 	MicrosoftTeam getGroup(String id) throws MicrosoftCredentialsException;
 	Map<String, MicrosoftTeam> getTeams() throws MicrosoftCredentialsException;
 	Map<String, MicrosoftTeam> getTeams(boolean force) throws MicrosoftCredentialsException;
+	Map<String, MicrosoftTeam> getTeamsBySites(List<SiteSynchronization> sites) throws MicrosoftCredentialsException;
+
 	MicrosoftTeam getTeam(String id) throws MicrosoftCredentialsException;
 	MicrosoftTeam getTeam(String id, boolean force) throws MicrosoftCredentialsException;
 	
