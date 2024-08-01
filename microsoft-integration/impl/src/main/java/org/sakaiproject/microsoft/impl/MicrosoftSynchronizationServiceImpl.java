@@ -225,6 +225,21 @@ public class MicrosoftSynchronizationServiceImpl implements MicrosoftSynchroniza
 	}
 
 	@Override
+	public List<SiteSynchronization> getFilteredSiteSynchronizations(boolean fillSite, SakaiSiteFilter filter, ZonedDateTime fromDate, ZonedDateTime toDate) {
+		final List<Site> sites = sakaiProxy.getSakaiSites(filter);
+		List<SiteSynchronization> result = StreamSupport.stream(microsoftSiteSynchronizationRepository.findByDate(fromDate, toDate).spliterator(), false)
+				.map(ss -> {
+					if (fillSite) {
+						ss.setSite(sakaiProxy.getSite(ss.getSiteId()));
+					}
+					return ss;
+				})
+				.filter(ss -> sites.contains(sakaiProxy.getSite(ss.getSiteId())))
+				.collect(Collectors.toList());
+		return result;
+	}
+
+	@Override
 	public SiteSynchronization getSiteSynchronization(SiteSynchronization ss) {
 		return getSiteSynchronization(ss, false);
 	}

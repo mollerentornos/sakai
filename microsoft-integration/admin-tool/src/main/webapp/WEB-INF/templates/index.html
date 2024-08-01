@@ -206,6 +206,8 @@
 				let pageSize = document.getElementById('page-size-input');
 				let pageNum = document.getElementById('select-page-num');
 				let maxPage = document.getElementById('select-max-page');
+				let siteProperty = document.getElementById('site-property');
+
 				switch (elem) {
 					case 'firstPagination':
 						pageNum.value = 0;
@@ -241,7 +243,10 @@
 						break;
 				}
 				const data = new FormData(form);
-				return new URLSearchParams(data).toString();
+				const filterData = new FormData(document.getElementById("filter-form"));
+				const params = new URLSearchParams(data).toString() + '&' + new URLSearchParams(filterData).toString();
+				console.log(params);
+				return params;
 			}
 
 			function deleteRows() {
@@ -259,6 +264,17 @@
 					item.disabled = true;
 				});
 				form.submit();
+			}
+
+			function clearFilters() {
+				var form = document.getElementById("filter-form");
+				form.reset();
+
+				document.getElementById('from-date').value = "";
+				document.getElementById('to-date').value = "";
+				document.getElementById('site-property').value = "";
+
+				loadBody('filter');
 			}
 		</script>
 	</div>
