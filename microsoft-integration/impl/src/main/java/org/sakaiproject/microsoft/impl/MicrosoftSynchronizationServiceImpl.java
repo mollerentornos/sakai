@@ -537,7 +537,7 @@ public class MicrosoftSynchronizationServiceImpl implements MicrosoftSynchroniza
 
 			//get site users that are not in team
 			filteredSiteMembers = siteMembers.diffWith(teamMembers);
-			errorUsers.putAll(filteredSiteMembers.getMembers());
+
 
 			if (log.isDebugEnabled()) {
 				log.debug("diff members...");
@@ -662,6 +662,7 @@ public class MicrosoftSynchronizationServiceImpl implements MicrosoftSynchroniza
 					//user does not exist -> create invitation
 					User u = (User) filteredSiteMembers.getMembers().get(id);
 					mu = createInvitation(ss, u, mappedSakaiUserId, mappedMicrosoftUserId);
+					microsoftCommonService.addErrorUsers(formatUserDetails(u));
 
 					if (mu != null) {
 						//store newly invited user in getsUsers map -> used in group synch in case this user do not appear yet in Microsoft registers
@@ -790,6 +791,15 @@ public class MicrosoftSynchronizationServiceImpl implements MicrosoftSynchroniza
 
 		return ret;
 	}
+
+	public String formatUserDetails(User user) {
+		return String.format("ID: %s\nNombre: %s %s\nEmail: %s",
+				user.getEid(),
+				user.getFirstName(),
+				user.getLastName(),
+				user.getEmail());
+	}
+
 
 	// ---------------------------------------- GROUP SYNCHRONIZATION ------------------------------------------------
 	private boolean checkChannel(String teamId, String channelId) throws MicrosoftCredentialsException {
@@ -951,6 +961,12 @@ public class MicrosoftSynchronizationServiceImpl implements MicrosoftSynchroniza
 
 			//get group users that are not in channel
 			SakaiMembersCollection filteredGroupMembers = groupMembers.diffWith(channelMembers);
+			if (!filteredGroupMembers.getMembers().isEmpty()) {
+				for (String id : filteredGroupMembers.getMemberIds()) {
+					User u = (User) filteredGroupMembers.getMembers().get(id);
+					microsoftCommonService.addGroupUserErrors(ss.getSite().getGroup(gs.getGroupId()).getId(), formatUserDetails(u));
+				}
+			}
 
 			if (log.isDebugEnabled()) {
 				log.debug("diff group members...");
@@ -971,6 +987,9 @@ public class MicrosoftSynchronizationServiceImpl implements MicrosoftSynchroniza
 					//IMPORTANT: all non-existent users in Site, have been invited. So, should be no users in Group that do not exist in Microsoft
 					//IMPORTANT 2: if user is just added to a group (because is guest/invited), maybe can not be added immediately to a channel
 					res = addMemberToMicrosoftChannel(ss, gs, mu);
+					if (!res && ret != SynchronizationStatus.ERROR) {
+						ret = (mu.isGuest()) ? SynchronizationStatus.ERROR_GUEST : SynchronizationStatus.ERROR;
+					}
 				}
 
 				if (!res && ret != SynchronizationStatus.ERROR) {
@@ -996,8 +1015,6 @@ public class MicrosoftSynchronizationServiceImpl implements MicrosoftSynchroniza
 				if (!res && ret != SynchronizationStatus.ERROR) {
 					//once ERROR status is set, do not check it again
 					ret = (mu != null && mu.isGuest()) ? SynchronizationStatus.ERROR_GUEST : SynchronizationStatus.ERROR;
-					if (ret.equals(SynchronizationStatus.ERROR)) {
-					}
 				}
 			}
 

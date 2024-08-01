@@ -29,6 +29,7 @@ import org.sakaiproject.microsoft.api.data.MicrosoftCredentials;
 import org.sakaiproject.microsoft.api.data.MicrosoftTeam;
 import org.sakaiproject.microsoft.api.data.SynchronizationStatus;
 import org.sakaiproject.microsoft.api.model.GroupSynchronization;
+import org.sakaiproject.microsoft.api.model.MicrosoftLog;
 import org.sakaiproject.microsoft.api.model.SiteSynchronization;
 import org.sakaiproject.microsoft.api.persistence.MicrosoftLoggingRepository;
 import org.sakaiproject.microsoft.controller.auxiliar.AutoConfigConfirmRequest;
@@ -299,8 +300,25 @@ public class AutoConfigController {
 
 			autoConfigSessionBean.addError(site.getId(), site.getTitle(), rb.getString("error.creating_team"));
 			microsoftSynchronizationService.saveOrUpdateSiteSynchronization(ss);
+			microsoftLoggingService.saveLog(MicrosoftLog.builder()
+					.event(MicrosoftLog.ERROR_TEAM_ID_NULL)
+					.status(MicrosoftLog.Status.KO)
+					.addData("teamId", teamId)
+					.addData("siteId", site.getId())
+					.addData("siteTitle", site.getTitle())
+					.addData("teamTitle", teamName)
+					.build());
 			return;
 		}
+
+		microsoftLoggingService.saveLog(MicrosoftLog.builder()
+				.event(MicrosoftLog.EVENT_CREATE_TEAM_FROM_SITE)
+				.status(MicrosoftLog.Status.OK)
+				.addData("siteId", site.getId())
+				.addData("siteTitle", site.getTitle())
+				.addData("teamId", teamId)
+				.addData("teamTitle", teamName)
+				.build());
 
 		boolean limitExceeded = site.getGroups().size() > MAX_CHANNELS;
 		List<Group> groupsToProcess = limitGroups(site.getGroups().stream().filter(g -> !g.getTitle().startsWith("Access:")).collect(Collectors.toList()));
@@ -326,9 +344,50 @@ public class AutoConfigController {
 				microsoftSynchronizationService.saveOrUpdateGroupSynchronization(gs);
 			});
 		}
+		String groupsIds = groupsToProcess.stream()
+				.map(group -> group.getId().toString())
+				.collect(Collectors.joining(","));
+
+		String groupsNames = groupsToProcess.stream()
+				.map(group -> group.getTitle().toString())
+				.collect(Collectors.joining(","));
+
+		String channelIds = channels.stream()
+				.map(channel -> channel.getId().toString())
+				.collect(Collectors.joining(","));
+
+		String channelNames = channels.stream()
+				.map(channel -> channel.getName().toString())
+				.collect(Collectors.joining(","));
+
+		microsoftLoggingService.saveLog(MicrosoftLog.builder()
+				.event(MicrosoftLog.EVENT_CHANNEL_PRESENT_ON_GROUP)
+				.status(MicrosoftLog.Status.OK)
+				.addData("siteId", site.getId())
+				.addData("siteTitle", site.getTitle())
+				.addData("processGroupsIds", groupsIds)
+				.addData("processGroupsNames", groupsNames)
+				.addData("numberGroupsOnSite", String.valueOf(site.getGroups().size()))
+				.addData("numberLimitedGroups", String.valueOf(groupsToProcess.size()))
+				.addData("numberNonProcessedGroups", String.valueOf(site.getGroups().size() - groupsToProcess.size()))
+				.addData("teamId", teamId)
+				.addData("teamTitle", teamName)
+				.addData("createChannelsId", channelIds)
+				.addData("createChannelsName", channelNames)
+				.build());
+
 	}
 
 	public void handleExistingTeamBinding(AutoConfigSessionBean autoConfigSessionBean, Site site, SiteSynchronization ss, ZonedDateTime syncDateFrom, ZonedDateTime syncDateTo, MicrosoftCredentials credentials) throws Exception {
+
+		microsoftLoggingService.saveLog(MicrosoftLog.builder()
+				.event(MicrosoftLog.BINDING_TEAM_FROM_SITE)
+				.status(!site.getId().isBlank() ? MicrosoftLog.Status.OK : MicrosoftLog.Status.KO)
+				.addData("siteId", site.getId())
+				.addData("siteTitle", site.getTitle())
+				.addData("teamId", ss.getTeamId())
+				.build());
+
 		boolean limitExceeded = site.getGroups().size() > MAX_CHANNELS;
 		ss.setSyncDateFrom(syncDateFrom);
 		ss.setSyncDateTo(syncDateTo);
@@ -372,6 +431,36 @@ public class AutoConfigController {
 				}
 			}
 		}
+		String groupsIds = groupsToProcess.stream()
+				.map(group -> group.getId().toString())
+				.collect(Collectors.joining(","));
+
+		String groupsNames = groupsToProcess.stream()
+				.map(group -> group.getTitle().toString())
+				.collect(Collectors.joining(","));
+
+		String channelIds = channelsMap.values().stream()
+				.map(channel -> channel.getId().toString())
+				.collect(Collectors.joining(","));
+
+		String channelNames = channelsMap.values().stream()
+				.map(channel -> channel.getName().toString())
+				.collect(Collectors.joining(","));
+
+		microsoftLoggingService.saveLog(MicrosoftLog.builder()
+				.event(MicrosoftLog.EVENT_CHANNEL_PRESENT_ON_GROUP)
+				.status(MicrosoftLog.Status.OK)
+				.addData("siteId", site.getId())
+				.addData("siteTitle", site.getTitle())
+				.addData("processGroupsIds", groupsIds)
+				.addData("processGroupsNames", groupsNames)
+				.addData("numberGroupsOnSite", String.valueOf(site.getGroups().size()))
+				.addData("numberLimitedGroups", String.valueOf(groupsToProcess.size()))
+				.addData("numberNonProcessedGroups", String.valueOf(site.getGroups().size() - groupsToProcess.size()))
+				.addData("teamId", ss.getTeamId())
+				.addData("createChannelsId", channelIds)
+				.addData("createChannelsName", channelNames)
+				.build());
 	}
 
 	private List<Group> limitGroups(Collection<Group> groups) {

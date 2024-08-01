@@ -58,9 +58,8 @@ import java.util.stream.Collectors;
 
 /**
  * MainController
- *
+ * <p>
  * This is the controller used by Spring MVC to handle requests
- *
  */
 @Log4j2
 @Controller
@@ -233,6 +232,10 @@ public class MainController {
 		if (ss != null) {
 			model.addAttribute("groupsMap", ss.getSite().getGroups().stream().collect(Collectors.toMap(Group::getId, Function.identity())));
 			model.addAttribute("channelsMap", microsoftCommonService.getTeamPrivateChannels(ss.getTeamId()));
+			if (ss.getStatus().equals(SynchronizationStatus.ERROR) || ss.getStatus().equals(SynchronizationStatus.PARTIAL_OK)) {
+				model.addAttribute("errorMembers", microsoftCommonService.getErrorUsers());
+				model.addAttribute("errorGroupMembers", microsoftCommonService.getErrorGroupsUsers());
+			}
 			model.addAttribute("siteRow", ss);
 		}
 
@@ -264,11 +267,16 @@ public class MainController {
 		if (ss != null) {
 			microsoftSynchronizationService.runSiteSynchronization(ss);
 
+			if (ss.getGroupSynchronizationsList().stream().anyMatch(group -> group.getStatus().equals(SynchronizationStatus.OK)) && ss.getStatus().equals(SynchronizationStatus.ERROR)) {
+				ss.setStatus(SynchronizationStatus.PARTIAL_OK);
+				microsoftSynchronizationService.saveOrUpdateSiteSynchronization(ss);
+			}
 			model.addAttribute("row", ss);
 			model.addAttribute("teamsMap", microsoftCommonService.getTeams());
 
 			if (ss.getStatus().equals(SynchronizationStatus.ERROR)) {
 				model.addAttribute("errorMembers", microsoftCommonService.getErrorUsers());
+				model.addAttribute("errorGroupMembers", microsoftCommonService.getErrorGroupsUsers());
 			}
 		}
 		return ROW_SITE_SYNCH_FRAGMENT;
