@@ -32,6 +32,7 @@ import org.sakaiproject.site.api.Group;
 
 import java.io.File;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +47,8 @@ public interface MicrosoftCommonService {
 	public static final int MAX_CHANNELS = 30;
 	public static final int MAX_ADD_CHANNELS = 20;
 
-	public static Map<String, Object> errorUsers = new HashMap<>();
+	public static List<String> errorUsers = new ArrayList<>();
+	Map<String, List<String>> groupErrors = new HashMap<>();
 
 
 	public static enum PermissionRoles { READ, WRITE }
@@ -61,12 +63,13 @@ public interface MicrosoftCommonService {
 	
 	// ---------------------------------------- USERS ------------------------------------------------
 	List<MicrosoftUser> getUsers() throws MicrosoftCredentialsException;
-	Map<String, Object> getErrorUsers() throws MicrosoftCredentialsException;
-
+	List<String> getErrorUsers() throws MicrosoftCredentialsException;
+	void addErrorUsers(String user) throws MicrosoftCredentialsException;
+	Map<String, List<String>> getErrorGroupsUsers() throws MicrosoftCredentialsException;
+	void addGroupUserErrors(String id, String details) throws MicrosoftCredentialsException;
 	MicrosoftUser getUser(String identifier, MicrosoftUserIdentifier key) throws MicrosoftCredentialsException;
 	MicrosoftUser getUserById(String id) throws MicrosoftCredentialsException;
 	MicrosoftUser getUserByEmail(String email) throws MicrosoftCredentialsException;
-
 	boolean checkUser(String identifier, MicrosoftUserIdentifier key) throws MicrosoftCredentialsException;
 	
 	// ---------------------------------------- INVITATIONS ------------------------------------------------

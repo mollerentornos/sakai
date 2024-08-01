@@ -295,9 +295,32 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 	}
 
 	@Override
-	public Map<String, Object> getErrorUsers() throws MicrosoftCredentialsException {
+	public List<String> getErrorUsers() throws MicrosoftCredentialsException {
 		return errorUsers;
 	}
+
+	@Override
+	public void addErrorUsers(String user) throws MicrosoftCredentialsException {
+		if (user != null) {
+			errorUsers.add(user);
+		}
+	}
+
+	@Override
+	public Map<String, List<String>> getErrorGroupsUsers() throws MicrosoftCredentialsException {
+		return groupErrors;
+	}
+
+	@Override
+	public void addGroupUserErrors(String id, String details) throws MicrosoftCredentialsException {
+		if (id != null && details != null) {
+			// Si la clave ya existe, obtén la lista existente o crea una nueva si no existe
+			List<String> existingDetails = groupErrors.computeIfAbsent(id, k -> new ArrayList<>());
+			// Añade el nuevo detalle a la lista
+			existingDetails.add(details);
+		}
+	}
+
 
 	@Override
 	public boolean checkUser(String identifier, MicrosoftUserIdentifier key) throws MicrosoftCredentialsException {
