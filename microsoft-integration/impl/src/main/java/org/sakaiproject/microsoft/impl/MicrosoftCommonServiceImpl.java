@@ -1333,7 +1333,7 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 		}
 
 		switch(listToProcess.get(0).getClass().getSimpleName()) {
-			case "Group":
+			case "BaseGroup":
 				resultMap = parseBatchResponseToMicrosoftChannel(responseContent, listToProcess);
 				break;
 			case "SiteSynchronization":
