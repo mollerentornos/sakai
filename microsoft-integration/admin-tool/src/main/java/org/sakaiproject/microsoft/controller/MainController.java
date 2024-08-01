@@ -22,13 +22,11 @@ import org.sakaiproject.microsoft.api.MicrosoftConfigurationService;
 import org.sakaiproject.microsoft.api.MicrosoftSynchronizationService;
 import org.sakaiproject.microsoft.api.SakaiProxy;
 import org.sakaiproject.microsoft.api.data.MicrosoftTeam;
-import org.sakaiproject.microsoft.api.data.SakaiSiteFilter;
 import org.sakaiproject.microsoft.api.data.SynchronizationStatus;
 import org.sakaiproject.microsoft.api.exceptions.MicrosoftCredentialsException;
 import org.sakaiproject.microsoft.api.exceptions.MicrosoftGenericException;
 import org.sakaiproject.microsoft.api.model.SiteSynchronization;
 import org.sakaiproject.microsoft.controller.auxiliar.AjaxResponse;
-import org.sakaiproject.microsoft.controller.auxiliar.FilterRequest;
 import org.sakaiproject.microsoft.controller.auxiliar.MainSessionBean;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.util.ResourceLoader;
@@ -45,9 +43,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -103,7 +98,6 @@ public class MainController {
 			@RequestParam(required = false) Integer pageNum,
 			@RequestParam(required = false) Integer pageSize,
 			@RequestParam(required = false) String search,
-			FilterRequest requestBody,
 			Model model
 	) throws MicrosoftGenericException {
 		if (sortBy == null) {
@@ -121,34 +115,14 @@ public class MainController {
 		if (search == null) {
 			search = mainSessionBean.getSearch();
 		}
-		if (requestBody.getFromDate() == null || requestBody.getToDate() == null) {
-			requestBody = new FilterRequest();
-			requestBody.setSiteProperty(mainSessionBean.getSiteProperty());
-			requestBody.setFromDate(mainSessionBean.getFromDate());
-			requestBody.setToDate(mainSessionBean.getToDate());
-		}
-
 		mainSessionBean.setSortBy(sortBy);
 		mainSessionBean.setSortOrder(sortOrder);
 		mainSessionBean.setPageNum(pageNum);
 		mainSessionBean.setPageSize(pageSize);
 		mainSessionBean.setSearch(search);
-		mainSessionBean.setFromDate(requestBody.getFromDate());
-		mainSessionBean.setToDate(requestBody.getToDate());
-		mainSessionBean.setSiteProperty(requestBody.getSiteProperty());
 
-		List<SiteSynchronization> list;
-		Map<String, MicrosoftTeam> map;
-
-		if(requestBody.getFromDate().isEmpty() || requestBody.getToDate().isEmpty()) {
-			list = microsoftSynchronizationService.getFilteredSiteSynchronizations(true, SakaiSiteFilter.builder().siteProperty(requestBody.getSiteProperty()).build(), null, null);
-		} else {
-			ZonedDateTime fromDate = LocalDate.parse(requestBody.getFromDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd")).atStartOfDay(ZoneOffset.UTC);
-			ZonedDateTime toDate = LocalDate.parse(requestBody.getToDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd")).atStartOfDay(ZoneOffset.UTC);
-			list = microsoftSynchronizationService.getFilteredSiteSynchronizations(true, SakaiSiteFilter.builder().siteProperty(requestBody.getSiteProperty()).build(), fromDate, toDate);
-		}
-
-		map = microsoftCommonService.getTeamsBySites(list);
+		List<SiteSynchronization> list = microsoftSynchronizationService.getAllSiteSynchronizations(true);
+		Map<String, MicrosoftTeam> map = microsoftCommonService.getTeams();
 
 		//filter elements
 		if (StringUtils.isNotBlank(search)) {
@@ -216,11 +190,6 @@ public class MainController {
 		model.addAttribute("pageNum", pageNum);
 		model.addAttribute("maxPage", maxPage);
 		model.addAttribute("search", search);
-		model.addAttribute("requestBody", requestBody);
-		model.addAttribute("fromDate", requestBody.getFromDate());
-		model.addAttribute("toDate", requestBody.getToDate());
-		model.addAttribute("siteProperty", requestBody.getSiteProperty());
-		model.addAttribute("filterCount", requestBody.getFilterCount());
 
 		return BODY_TEMPLATE;
 	}

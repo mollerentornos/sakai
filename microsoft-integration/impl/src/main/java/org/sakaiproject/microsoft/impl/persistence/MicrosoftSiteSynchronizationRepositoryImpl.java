@@ -15,9 +15,7 @@
  */
 package org.sakaiproject.microsoft.impl.persistence;
 
-import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 import javax.persistence.criteria.CriteriaBuilder;
@@ -88,19 +86,6 @@ public class MicrosoftSiteSynchronizationRepositoryImpl extends BasicSerializabl
 		return (List<SiteSynchronization>)startCriteriaQuery()
 				.add(Restrictions.ne("teamId", teamId))
 				.list();
-	}
-
-	@Override
-	public List<SiteSynchronization> findByDate(ZonedDateTime fromDate, ZonedDateTime toDate) {
-		Criteria criteria = startCriteriaQuery();
-		if(Objects.nonNull(fromDate) && Objects.nonNull(toDate)) {
-			criteria
-					.add(Restrictions.between("syncDateFrom", fromDate, toDate));
-		} else {
-			criteria
-					.addOrder(Order.asc("status"));
-		}
-		return criteria.list();
 	}
 
 	@Override

@@ -15,8 +15,6 @@
  */
 package org.sakaiproject.microsoft.api.persistence;
 
-
-import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,7 +27,6 @@ public interface MicrosoftSiteSynchronizationRepository extends SerializableRepo
 	List<SiteSynchronization> findBySite(String siteId);
 	List<SiteSynchronization> findByTeam(String teamId);
 	List<SiteSynchronization> findDistinctByTeam(String teamId);
-	List<SiteSynchronization> findByDate(ZonedDateTime fromDate, ZonedDateTime toDate);
 	List<String> findBySiteIdList(List<String> siteIds);
 	
 	long countSiteSynchronizationsByTeamId(String teamId, boolean forced);

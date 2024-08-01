@@ -21,7 +21,6 @@ import java.io.InputStream;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -43,8 +42,6 @@ import java.util.stream.Collectors;
 import com.microsoft.graph.content.BatchRequestContent;
 import com.microsoft.graph.content.BatchResponseContent;
 import com.microsoft.graph.http.HttpMethod;
-import com.microsoft.graph.options.QueryOption;
-import com.microsoft.graph.requests.GroupRequest;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LoggerContext;
@@ -71,7 +68,6 @@ import org.sakaiproject.microsoft.api.exceptions.MicrosoftGenericException;
 import org.sakaiproject.microsoft.api.exceptions.MicrosoftInvalidCredentialsException;
 import org.sakaiproject.microsoft.api.exceptions.MicrosoftInvalidInvitationException;
 import org.sakaiproject.microsoft.api.exceptions.MicrosoftNoCredentialsException;
-import org.sakaiproject.microsoft.api.model.SiteSynchronization;
 import org.sakaiproject.microsoft.api.persistence.MicrosoftConfigRepository;
 import org.sakaiproject.microsoft.api.persistence.MicrosoftLoggingRepository;
 import org.sakaiproject.microsoft.provider.AdminAuthProvider;
@@ -565,68 +561,6 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 
 		//store in cache
 		getCache().put(CACHE_TEAMS, teamsMap);
-
-		return teamsMap;
-	}
-
-	@Override
-	public Map<String, MicrosoftTeam> getTeamsBySites(List<SiteSynchronization> sites) throws MicrosoftCredentialsException {
-		Map<String, MicrosoftTeam> teamsMap = new HashMap<>();
-		List<SiteSynchronization> pendingSites = new ArrayList<>();
-
-		//get from cache
-		Cache.ValueWrapper cachedValue = getCache().get(CACHE_TEAMS);
-		if (cachedValue != null) {
-			Map<String, MicrosoftTeam> teams = (Map<String, MicrosoftTeam>) cachedValue.get();
-			sites.forEach(s -> {
-				if (teams.containsKey(s.getTeamId())) {
-					teamsMap.put(s.getTeamId(), teams.get(s.getTeamId()));
-				} else {
-					pendingSites.add(s);
-				}
-			});
-		} else {
-			pendingSites.addAll(sites);
-		}
-
-		if (pendingSites.isEmpty()) {
-			return teamsMap;
-		}
-
-		final int MAX_LENGTH = 20;
-		int pointer = 0;
-		LinkedList<Option> requestOptions = new LinkedList<Option>();
-		requestOptions.add(new HeaderOption("ConsistencyLevel", "eventual"));
-		requestOptions.add(new QueryOption("$select", "id,displayName,description"));
-
-		GraphServiceClient graph = getGraphClient();
-		List<SiteSynchronization> sitesToProcess;
-
-		//sometimes microsoft fails creating -> loop for retry failed ones
-		while (!pendingSites.isEmpty()) {
-			int endIndex = Math.min(pointer + MAX_LENGTH, pendingSites.size());
-			sitesToProcess = pendingSites.subList(pointer, endIndex);
-
-			BatchRequestContent batchRequestContent = new BatchRequestContent();
-
-			sitesToProcess.forEach(group -> {
-				GroupRequest getGroups = graph.groups(group.getTeamId())
-						.buildRequest(requestOptions);
-
-				batchRequestContent.addBatchRequestStep(getGroups, HttpMethod.GET);
-			});
-
-			BatchResponseContent responseContent = getGraphClient().batch().buildRequest().post(batchRequestContent);
-
-			HashMap<String, ?> teamsResponse = parseBatchResponse(responseContent, sitesToProcess);
-
-			teamsMap.putAll((HashMap<String, MicrosoftTeam>) teamsResponse.get("success"));
-			pendingSites.removeAll(sitesToProcess);
-			pendingSites.addAll((List<SiteSynchronization>) teamsResponse.get("pending"));
-		}
-
-		//store in cache
-		getCache().putIfAbsent(CACHE_TEAMS, teamsMap);
 
 		return teamsMap;
 	}
@@ -1306,7 +1240,7 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 
 			BatchResponseContent responseContent = getGraphClient().batch().buildRequest().post(batchRequestContent);
 
-			HashMap<String, ?> channelsResponse = parseBatchResponse(responseContent, groupsToProcess);
+			HashMap<String, List<?>> channelsResponse = parseBatchResponseToChannels(responseContent, groupsToProcess);
 
 			channels.addAll((List<MicrosoftChannel>) channelsResponse.get("success"));
 			pendingChannels = (List<org.sakaiproject.site.api.Group>) channelsResponse.get("failed");
@@ -1325,86 +1259,27 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 		return channels;
 	}
 
-	private HashMap<String, ?> parseBatchResponse(BatchResponseContent responseContent, List<?> listToProcess) {
-		HashMap<String, ?> resultMap = new HashMap<>();
-
-		if (Objects.isNull(responseContent)) {
-			return resultMap;
-		}
-
-		switch(listToProcess.get(0).getClass().getSimpleName()) {
-			case "Group":
-				resultMap = parseBatchResponseToMicrosoftChannel(responseContent, listToProcess);
-				break;
-			case "SiteSynchronization":
-				resultMap = parseBatchResponseToMicrosoftTeam(responseContent, listToProcess);
-				break;
-		}
-
-		return resultMap;
-	}
-
-	private HashMap<String, ?> parseBatchResponseToMicrosoftTeam(BatchResponseContent responseContent, List<?> listToProcess) {
-		HashMap<String, Object> responseMap = new HashMap<>();
-
-		Map<String, MicrosoftTeam> successRequests =
-				responseContent.responses.stream().filter(r -> r.status <= 299).collect(Collectors.toList())
-						.stream().map(r -> {
-							Map.Entry<String, MicrosoftTeam> entry = new AbstractMap.SimpleEntry<>(
-									r.body.getAsJsonObject().get("id").getAsString(),
-									MicrosoftTeam.builder()
-											.id(r.body.getAsJsonObject().get("id").getAsString())
-											.name(r.body.getAsJsonObject().get("displayName").getAsString())
-											.description(r.body.getAsJsonObject().get("description").getAsString())
-											.build()
-							);
-							return entry;
-						}).collect(Collectors.toMap(
-								entry -> entry.getKey(),
-								entry -> entry.getValue()
-						));
-
-		List<String> nonExistingSites = responseContent.responses.stream().filter(r -> r.status == 404).collect(Collectors.toList())
-				.stream().map(r -> r.body.getAsJsonObject().get("error").getAsJsonObject().get("message").getAsString()).collect(Collectors.toList());
-
-		List<SiteSynchronization> pendingSites =
-				(List<SiteSynchronization>) listToProcess.stream()
-						.filter(i ->
-								successRequests.values().stream().noneMatch(c ->
-										c.getId().equals(((SiteSynchronization) i).getTeamId()))
-										&& nonExistingSites.stream().noneMatch(nes -> nes.contains(((SiteSynchronization) i).getTeamId())))
-						.collect(Collectors.toList());
-
-		responseMap.put("pending", pendingSites);
-		responseMap.put("failed", nonExistingSites);
-		responseMap.put("success", successRequests);
-
-		return responseMap;
-	}
-
-	private HashMap<String, ?> parseBatchResponseToMicrosoftChannel(BatchResponseContent responseContent, List<?> listToProcess) {
+	private HashMap<String, List<?>> parseBatchResponseToChannels(BatchResponseContent responseContent, List<org.sakaiproject.site.api.Group> groupsToProcess) {
 		HashMap<String, List<?>> responseMap = new HashMap<>();
-		List<MicrosoftChannel> successRequests =
-				responseContent.responses.stream().filter(r -> r.status <= 299).collect(Collectors.toList())
-						.stream().map(r -> MicrosoftChannel.builder()
-								.id(r.body.getAsJsonObject().get("id").getAsString())
-								.name(r.body.getAsJsonObject().get("displayName").getAsString())
-								.description(r.body.getAsJsonObject().get("description").getAsString())
-								.build()).collect(Collectors.toList());
 
-		List<org.sakaiproject.site.api.Group> pendingGroups =
-				(List<org.sakaiproject.site.api.Group>) listToProcess.stream()
-						.filter(g ->
-								successRequests.stream().noneMatch(c ->
-										c.getName()
-												.equalsIgnoreCase(formatMicrosoftString(truncateTitle(((org.sakaiproject.site.api.Group) g).getTitle())))))
-						.collect(Collectors.toList());
+		if (Objects.nonNull(responseContent)) {
+			List<MicrosoftChannel> successRequests =
+					responseContent.responses.stream().filter(r -> r.status <= 299).collect(Collectors.toList())
+							.stream().map(r -> MicrosoftChannel.builder()
+									.id(r.body.getAsJsonObject().get("id").getAsString())
+									.name(r.body.getAsJsonObject().get("displayName").getAsString())
+									.description(r.body.getAsJsonObject().get("description").getAsString())
+									.build()).collect(Collectors.toList());
 
-		responseMap.put("failed", pendingGroups);
-		responseMap.put("success", successRequests);
+			List<org.sakaiproject.site.api.Group> pendingGroups = groupsToProcess.stream()
+					.filter(g -> successRequests.stream().noneMatch(c -> c.getName().equalsIgnoreCase(formatMicrosoftString(truncateTitle(g.getTitle())))))
+					.collect(Collectors.toList());
+
+			responseMap.put("failed", pendingGroups);
+			responseMap.put("success", successRequests);
+		}
 
 		return responseMap;
-
 	}
 
 	private ConversationMemberCollectionPage initializeChannelMembers(String ownerEmail) throws MicrosoftCredentialsException {
