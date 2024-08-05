@@ -146,7 +146,7 @@ public class AutoConfigController {
 					//just to display it in the confirmation table
 					site.setTitle(title);
 				}
-				final String finalTitle = title;
+				final String finalTitle = microsoftCommonService.processMicrosoftTeamName(title);
 
 				//check if there is a, not-used Team that matched the Site
 				MicrosoftTeam team = teamsMap.values().stream().filter(t -> t.getName().equalsIgnoreCase(finalTitle)).findAny().orElse(null);

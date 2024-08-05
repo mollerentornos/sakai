@@ -307,7 +307,7 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 	}
 
 	@Override
-	public Map<String, List<String>> getErrorGroupsUsers() throws MicrosoftCredentialsException {
+	public Map<String, Set<String>> getErrorGroupsUsers() throws MicrosoftCredentialsException {
 		return groupErrors;
 	}
 
@@ -315,7 +315,7 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 	public void addGroupUserErrors(String id, String details) throws MicrosoftCredentialsException {
 		if (id != null && details != null) {
 			// Si la clave ya existe, obtén la lista existente o crea una nueva si no existe
-			List<String> existingDetails = groupErrors.computeIfAbsent(id, k -> new ArrayList<>());
+			Set<String> existingDetails = groupErrors.computeIfAbsent(id, k -> new HashSet<>());
 			// Añade el nuevo detalle a la lista
 			existingDetails.add(details);
 		}
@@ -684,10 +684,7 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 			LinkedList<String> rolesList = new LinkedList<String>();
 			rolesList.add("owner");
 
-			String truncatedName = name.length() > TEAM_CHARACTER_LIMIT ?
-					name.substring(0, TEAM_CHARACTER_LIMIT - UDL_CODE_SIZE - 3) + TEAM_CHARACTER_SEPARATOR + name.substring(name.length() - UDL_CODE_SIZE, name.length())
-					:
-					name;
+			String truncatedName = processMicrosoftTeamName(name);
 
 			User userOwner = getGraphClient().users(ownerEmail).buildRequest().get();
 			AadUserConversationMember conversationMember = new AadUserConversationMember();
@@ -1266,11 +1263,11 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 	@Override
 	public String createChannel(String teamId, String name, String ownerEmail) throws MicrosoftCredentialsException {
 		try {
-			String truncatedName = name.length() > CHANNEL_CHARACTER_LIMIT ? name.substring(0, CHANNEL_CHARACTER_LIMIT - 1) : name;
+			String truncatedName = processMicrosoftChannelName(name);
 
 			Channel channel = new Channel();
 			channel.membershipType = ChannelMembershipType.PRIVATE;
-			channel.displayName = formatMicrosoftString(truncatedName);
+			channel.displayName = truncatedName;
 			channel.description = truncatedName;
 
 			channel.members = initializeChannelMembers(ownerEmail);
@@ -1448,6 +1445,15 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 	@Override
 	public String processMicrosoftChannelName(String name) {
 		return formatMicrosoftString(truncateTitle(name));
+	}
+
+
+	@Override
+	public String processMicrosoftTeamName(String name) {
+		return name.length() > TEAM_CHARACTER_LIMIT ?
+				name.substring(0, TEAM_CHARACTER_LIMIT - UDL_CODE_SIZE - 3) + TEAM_CHARACTER_SEPARATOR + name.substring(name.length() - UDL_CODE_SIZE, name.length())
+				:
+				name;
 	}
 
 	private String truncateTitle(String title) {

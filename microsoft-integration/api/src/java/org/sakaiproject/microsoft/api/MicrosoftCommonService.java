@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface MicrosoftCommonService {
 	public static final String PERM_VIEW_ALL_CHANNELS = "microsoft.channels.view.all";
@@ -48,7 +49,7 @@ public interface MicrosoftCommonService {
 	public static final int MAX_ADD_CHANNELS = 20;
 
 	public static List<String> errorUsers = new ArrayList<>();
-	Map<String, List<String>> groupErrors = new HashMap<>();
+	Map<String, Set<String>> groupErrors = new HashMap<>();
 
 
 	public static enum PermissionRoles { READ, WRITE }
@@ -65,7 +66,7 @@ public interface MicrosoftCommonService {
 	List<MicrosoftUser> getUsers() throws MicrosoftCredentialsException;
 	List<String> getErrorUsers() throws MicrosoftCredentialsException;
 	void addErrorUsers(String user) throws MicrosoftCredentialsException;
-	Map<String, List<String>> getErrorGroupsUsers() throws MicrosoftCredentialsException;
+	Map<String, Set<String>> getErrorGroupsUsers() throws MicrosoftCredentialsException;
 	void addGroupUserErrors(String id, String details) throws MicrosoftCredentialsException;
 	MicrosoftUser getUser(String identifier, MicrosoftUserIdentifier key) throws MicrosoftCredentialsException;
 	MicrosoftUser getUserById(String id) throws MicrosoftCredentialsException;
@@ -118,6 +119,8 @@ public interface MicrosoftCommonService {
 	List<MicrosoftChannel> createChannels(List<Group> groupsToProcess, String teamId, String ownerEmail) throws MicrosoftCredentialsException, JsonProcessingException;
 
 	String processMicrosoftChannelName(String name);
+
+	String processMicrosoftTeamName(String name);
 
 	boolean deleteChannel(String teamId, String channelId) throws MicrosoftCredentialsException;
 	

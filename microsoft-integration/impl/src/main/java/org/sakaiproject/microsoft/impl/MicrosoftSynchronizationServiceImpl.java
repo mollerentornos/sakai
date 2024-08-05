@@ -961,12 +961,6 @@ public class MicrosoftSynchronizationServiceImpl implements MicrosoftSynchroniza
 
 			//get group users that are not in channel
 			SakaiMembersCollection filteredGroupMembers = groupMembers.diffWith(channelMembers);
-			if (!filteredGroupMembers.getMembers().isEmpty()) {
-				for (String id : filteredGroupMembers.getMemberIds()) {
-					User u = (User) filteredGroupMembers.getMembers().get(id);
-					microsoftCommonService.addGroupUserErrors(ss.getSite().getGroup(gs.getGroupId()).getId(), formatUserDetails(u));
-				}
-			}
 
 			if (log.isDebugEnabled()) {
 				log.debug("diff group members...");
@@ -978,6 +972,8 @@ public class MicrosoftSynchronizationServiceImpl implements MicrosoftSynchroniza
 			for (String id : filteredGroupMembers.getMemberIds()) {
 				boolean res = false;
 				MicrosoftUser mu = microsoftCommonService.getUser(id, mappedMicrosoftUserId);
+				User u = (User) filteredGroupMembers.getMembers().get(id);
+
 				if (mu == null) {
 					//user not found in Microsoft. Check if is a newly created guest user
 					mu = guestUsers.get(id);
@@ -989,18 +985,22 @@ public class MicrosoftSynchronizationServiceImpl implements MicrosoftSynchroniza
 					res = addMemberToMicrosoftChannel(ss, gs, mu);
 					if (!res && ret != SynchronizationStatus.ERROR) {
 						ret = (mu.isGuest()) ? SynchronizationStatus.ERROR_GUEST : SynchronizationStatus.ERROR;
+						microsoftCommonService.addGroupUserErrors(ss.getSite().getGroup(gs.getGroupId()).getId(), formatUserDetails(u));
 					}
 				}
 
 				if (!res && ret != SynchronizationStatus.ERROR) {
 					//once ERROR status is set, do not check it again
 					ret = (mu != null && mu.isGuest()) ? SynchronizationStatus.ERROR_GUEST : SynchronizationStatus.ERROR;
+					microsoftCommonService.addGroupUserErrors(ss.getSite().getGroup(gs.getGroupId()).getId(), formatUserDetails(u));
 				}
 			}
 
 			for (String id : filteredGroupMembers.getOwnerIds()) {
 				boolean res = false;
 				MicrosoftUser mu = microsoftCommonService.getUser(id, mappedMicrosoftUserId);
+				User u = (User) filteredGroupMembers.getMembers().get(id);
+
 				if (mu == null) {
 					//user not found in Microsoft. Check if is a newly created guest user
 					mu = guestUsers.get(id);
@@ -1015,6 +1015,7 @@ public class MicrosoftSynchronizationServiceImpl implements MicrosoftSynchroniza
 				if (!res && ret != SynchronizationStatus.ERROR) {
 					//once ERROR status is set, do not check it again
 					ret = (mu != null && mu.isGuest()) ? SynchronizationStatus.ERROR_GUEST : SynchronizationStatus.ERROR;
+					microsoftCommonService.addGroupUserErrors(ss.getSite().getGroup(gs.getGroupId()).getId(), formatUserDetails(u));
 				}
 			}
 
