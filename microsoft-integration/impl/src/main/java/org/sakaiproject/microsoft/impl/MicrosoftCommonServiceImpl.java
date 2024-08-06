@@ -295,29 +295,27 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 	}
 
 	@Override
-	public List<String> getErrorUsers() throws MicrosoftCredentialsException {
+	public List<org.sakaiproject.user.api.User> getErrorUsers() throws MicrosoftCredentialsException {
 		return errorUsers;
 	}
 
 	@Override
-	public void addErrorUsers(String user) throws MicrosoftCredentialsException {
+	public void addErrorUsers(org.sakaiproject.user.api.User user) throws MicrosoftCredentialsException {
 		if (user != null) {
 			errorUsers.add(user);
 		}
 	}
 
 	@Override
-	public Map<String, Set<String>> getErrorGroupsUsers() throws MicrosoftCredentialsException {
+	public Map<String, Set<org.sakaiproject.user.api.User>> getErrorGroupsUsers() throws MicrosoftCredentialsException {
 		return groupErrors;
 	}
 
 	@Override
-	public void addGroupUserErrors(String id, String details) throws MicrosoftCredentialsException {
-		if (id != null && details != null) {
-			// Si la clave ya existe, obtén la lista existente o crea una nueva si no existe
-			Set<String> existingDetails = groupErrors.computeIfAbsent(id, k -> new HashSet<>());
-			// Añade el nuevo detalle a la lista
-			existingDetails.add(details);
+	public void addGroupUserErrors(String id, org.sakaiproject.user.api.User user) throws MicrosoftCredentialsException {
+		if (id != null && user != null) {
+			Set<org.sakaiproject.user.api.User> existingUsers = groupErrors.computeIfAbsent(id, k -> new HashSet<>());
+			existingUsers.add(user);
 		}
 	}
 
@@ -372,6 +370,7 @@ public class MicrosoftCommonServiceImpl implements MicrosoftCommonService {
 
 				usersMap.put(microsoftUser.getId(), microsoftUser);
 				getCache().put(CACHE_USERS, usersMap);
+				return microsoftUser;
 			}
 		} catch (MicrosoftCredentialsException e) {
 			throw e;

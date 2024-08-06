@@ -29,6 +29,7 @@ import org.sakaiproject.microsoft.api.exceptions.MicrosoftCredentialsException;
 import org.sakaiproject.microsoft.api.exceptions.MicrosoftGenericException;
 import org.sakaiproject.microsoft.api.model.SiteSynchronization;
 import org.sakaiproject.site.api.Group;
+import org.sakaiproject.user.api.User;
 
 import java.io.File;
 import java.time.Instant;
@@ -48,8 +49,8 @@ public interface MicrosoftCommonService {
 	public static final int MAX_CHANNELS = 30;
 	public static final int MAX_ADD_CHANNELS = 20;
 
-	public static List<String> errorUsers = new ArrayList<>();
-	Map<String, Set<String>> groupErrors = new HashMap<>();
+	public static List<User> errorUsers = new ArrayList<>();
+	Map<String, Set<User>> groupErrors = new HashMap<>();
 
 
 	public static enum PermissionRoles { READ, WRITE }
@@ -64,10 +65,10 @@ public interface MicrosoftCommonService {
 	
 	// ---------------------------------------- USERS ------------------------------------------------
 	List<MicrosoftUser> getUsers() throws MicrosoftCredentialsException;
-	List<String> getErrorUsers() throws MicrosoftCredentialsException;
-	void addErrorUsers(String user) throws MicrosoftCredentialsException;
-	Map<String, Set<String>> getErrorGroupsUsers() throws MicrosoftCredentialsException;
-	void addGroupUserErrors(String id, String details) throws MicrosoftCredentialsException;
+	List<User> getErrorUsers() throws MicrosoftCredentialsException;
+	void addErrorUsers(User user) throws MicrosoftCredentialsException;
+	Map<String, Set<User>> getErrorGroupsUsers() throws MicrosoftCredentialsException;
+	void addGroupUserErrors(String id, org.sakaiproject.user.api.User user) throws MicrosoftCredentialsException;
 	MicrosoftUser getUser(String identifier, MicrosoftUserIdentifier key) throws MicrosoftCredentialsException;
 	MicrosoftUser getUserById(String id) throws MicrosoftCredentialsException;
 	MicrosoftUser getUserByEmail(String email) throws MicrosoftCredentialsException;

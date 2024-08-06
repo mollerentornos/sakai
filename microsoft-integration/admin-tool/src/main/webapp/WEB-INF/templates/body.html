@@ -9,7 +9,7 @@
 			<input class="input-search" type="button" onclick="loadBody('search')" th:value="#{search}" />
 
 
-			<input type="button" th:value="'Filtros (' + ${filterCount} + ')'" data-toggle="modal" class="input-search" data-target="#filter-modal"/>
+			<input type="button" th:value="#{filters(${filterCount})}" data-toggle="modal" class="input-search" data-target="#filter-modal"/>
 		</div>
 
 		<div th:if="${siteSynchronizations.size() > 0}" id="buttons-container" class="col-lg-4 act utility-gap">
@@ -138,11 +138,11 @@
 								<div th:classappend="${aux}" class="text-right text-bold" th:text="#{filter_by_period}"></div>
 								<div class="col-xs-6 column">
 									<div>
-										<span th:text="#{from}" style="font-size: small;" class="col-xs-2" tabindex="0"></span>
+										<span th:text="#{from}" style="font-size: small;" class="col-xs-3" tabindex="0"></span>
 										<input style="font-size: small;" type="date" name="fromDate" th:value="${fromDate}" id="from-date" />
 									</div>
 									<div>
-										<span style="font-size: small;" class="col-xs-2" th:text="#{to}" tabindex="0"></span>
+										<span style="font-size: small;" class="col-xs-3" th:text="#{to}" tabindex="0"></span>
 										<input style="font-size: small;" type="date" name="toDate" th:value="${toDate}" id="to-date" />
 									</div>
 								</div>

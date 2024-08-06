@@ -65,7 +65,6 @@ import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
 
 import static org.sakaiproject.microsoft.api.MicrosoftCommonService.MAX_CHANNELS;
-import static org.sakaiproject.microsoft.api.MicrosoftCommonService.errorUsers;
 
 
 @Log4j2
@@ -93,8 +92,6 @@ public class MicrosoftSynchronizationServiceImpl implements MicrosoftSynchroniza
 	private Set<String> disabledGroupListeners = ConcurrentHashMap.newKeySet();
 	//used in hooks to synchronize. "add users to group" must happen after "create group"
 	private ConcurrentHashMap<String, Object> newGroupLock = new ConcurrentHashMap<>();
-
-	//private static final int MAX_CHANNELS = 3;
 
 	public void init() {
 		microsoftMessagingService.listen(MicrosoftMessage.Topic.CREATE_ELEMENT, message -> {
@@ -662,7 +659,7 @@ public class MicrosoftSynchronizationServiceImpl implements MicrosoftSynchroniza
 					//user does not exist -> create invitation
 					User u = (User) filteredSiteMembers.getMembers().get(id);
 					mu = createInvitation(ss, u, mappedSakaiUserId, mappedMicrosoftUserId);
-					microsoftCommonService.addErrorUsers(formatUserDetails(u));
+					microsoftCommonService.addErrorUsers(u);
 
 					if (mu != null) {
 						//store newly invited user in getsUsers map -> used in group synch in case this user do not appear yet in Microsoft registers
@@ -791,15 +788,6 @@ public class MicrosoftSynchronizationServiceImpl implements MicrosoftSynchroniza
 
 		return ret;
 	}
-
-	public String formatUserDetails(User user) {
-		return String.format("ID: %s\nNombre: %s %s\nEmail: %s",
-				user.getEid(),
-				user.getFirstName(),
-				user.getLastName(),
-				user.getEmail());
-	}
-
 
 	// ---------------------------------------- GROUP SYNCHRONIZATION ------------------------------------------------
 	private boolean checkChannel(String teamId, String channelId) throws MicrosoftCredentialsException {
@@ -985,14 +973,15 @@ public class MicrosoftSynchronizationServiceImpl implements MicrosoftSynchroniza
 					res = addMemberToMicrosoftChannel(ss, gs, mu);
 					if (!res && ret != SynchronizationStatus.ERROR) {
 						ret = (mu.isGuest()) ? SynchronizationStatus.ERROR_GUEST : SynchronizationStatus.ERROR;
-						microsoftCommonService.addGroupUserErrors(ss.getSite().getGroup(gs.getGroupId()).getId(), formatUserDetails(u));
 					}
 				}
 
 				if (!res && ret != SynchronizationStatus.ERROR) {
 					//once ERROR status is set, do not check it again
 					ret = (mu != null && mu.isGuest()) ? SynchronizationStatus.ERROR_GUEST : SynchronizationStatus.ERROR;
-					microsoftCommonService.addGroupUserErrors(ss.getSite().getGroup(gs.getGroupId()).getId(), formatUserDetails(u));
+				}
+				if(!res) {
+					microsoftCommonService.addGroupUserErrors(ss.getSite().getGroup(gs.getGroupId()).getId(), u);
 				}
 			}
 
@@ -1015,7 +1004,7 @@ public class MicrosoftSynchronizationServiceImpl implements MicrosoftSynchroniza
 				if (!res && ret != SynchronizationStatus.ERROR) {
 					//once ERROR status is set, do not check it again
 					ret = (mu != null && mu.isGuest()) ? SynchronizationStatus.ERROR_GUEST : SynchronizationStatus.ERROR;
-					microsoftCommonService.addGroupUserErrors(ss.getSite().getGroup(gs.getGroupId()).getId(), formatUserDetails(u));
+					microsoftCommonService.addGroupUserErrors(ss.getSite().getGroup(gs.getGroupId()).getId(), u);
 				}
 			}
 

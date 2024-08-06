@@ -23,6 +23,7 @@ import org.sakaiproject.microsoft.api.MicrosoftConfigurationService;
 import org.sakaiproject.microsoft.api.MicrosoftLoggingService;
 import org.sakaiproject.microsoft.api.MicrosoftSynchronizationService;
 import org.sakaiproject.microsoft.api.SakaiProxy;
+import org.sakaiproject.microsoft.api.data.AutoConfigProcessStatus;
 import org.sakaiproject.microsoft.api.data.CreationStatus;
 import org.sakaiproject.microsoft.api.data.MicrosoftChannel;
 import org.sakaiproject.microsoft.api.data.MicrosoftCredentials;
@@ -42,6 +43,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -213,7 +215,7 @@ public class AutoConfigController {
 			HttpServletRequest request,
 			Model model) throws Exception {
 
-		if (payload.getSiteIdList() == null || payload.getSiteIdList().isEmpty() ||
+		if (CollectionUtils.isEmpty(payload.getSiteIdList()) ||
 				payload.getSyncDateFrom() == null || payload.getSyncDateTo() == null) {
 			return false;
 		}
@@ -236,7 +238,7 @@ public class AutoConfigController {
 
 			if (!autoConfigSessionBean.isRunning()) {
 				autoConfigSessionBean.startRunning(payload.getSiteIdList().size());
-				autoConfigSessionBean.addStatus("Process started");
+				autoConfigSessionBean.addStatus(AutoConfigProcessStatus.START_RUNNING, "");
 
 				Map<String, Object> map = autoConfigSessionBean.getConfirmMap();
 
@@ -251,29 +253,24 @@ public class AutoConfigController {
 						continue;
 					}
 
-					if (o instanceof String) {
-						autoConfigSessionBean.addStatus(String.format("Creating teams for site %s...", site.getTitle()));
-						try {
+					try {
+						if (o instanceof String) {
+							autoConfigSessionBean.addStatus(AutoConfigProcessStatus.CREATING_TEAM, site.getTitle());
 							handleNewTeamCreation(autoConfigSessionBean, site, (String) o, syncDateFrom, syncDateTo, credentials);
-						} catch (Exception e) {
-							autoConfigSessionBean.addError(siteId, site.getTitle(), e.getMessage());
-						} finally {
-							autoConfigSessionBean.increaseCounter();
-						}
-					} else if (o instanceof SiteSynchronization) {
-						autoConfigSessionBean.addStatus(String.format("Binding existing teams for site %s...", site.getTitle()));
-						try {
+						} else if (o instanceof SiteSynchronization) {
+							autoConfigSessionBean.addStatus(AutoConfigProcessStatus.BINDING_TEAM, site.getTitle());
 							handleExistingTeamBinding(autoConfigSessionBean, site, (SiteSynchronization) o, syncDateFrom, syncDateTo, credentials);
-						} catch (Exception e) {
-							autoConfigSessionBean.addError(siteId, site.getTitle(), e.getMessage());
-						} finally {
-							autoConfigSessionBean.increaseCounter();
 						}
+					} catch (Exception e) {
+						log.error("Error handling site " + siteId, e);
+						autoConfigSessionBean.addError(siteId, site.getTitle(), e.getMessage());
+					} finally {
+						autoConfigSessionBean.increaseCounter();
 					}
 				}
 
 				if (autoConfigSessionBean.getCount() >= autoConfigSessionBean.getTotal()) {
-					autoConfigSessionBean.addStatus("Process finished");
+					autoConfigSessionBean.addStatus(AutoConfigProcessStatus.END_RUNNING, "");
 					autoConfigSessionBean.finishRunning();
 				}
 			}
